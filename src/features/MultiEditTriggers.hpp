@@ -15,8 +15,6 @@ struct Trigger {
     enum PropType {
         Color, Duration, Opacity, TargetGroup, CenterGroup, Easing, Item
     };
-    
-    // static std::map<short, Trigger> triggerProperties;
 
     static std::map<short, Trigger>& triggerProperties() {
         static std::map<short, Trigger> instance = {
@@ -72,9 +70,7 @@ struct Trigger {
             case Duration: return hasDuration;
             case Opacity: return hasOpacity;
             case TargetGroup: return hasTargetGroup;
-            case CenterGroup:
-                // if (object->m_objectID == 901 && (object->m_useMoveTarget || object->)) return true;
-                return hasCenterGroup;
+            case CenterGroup: return hasCenterGroup;
             case Easing: return hasEasing;
             case Item: return hasItem;
         }
@@ -94,5 +90,17 @@ struct Trigger {
         }
 
         return std::monostate();
+    };
+
+    void setProperty(PropType type, std::variant<int, float, EasingType> value) {
+        switch (type) {
+            case Color: object->m_targetColor = std::get<int>(value); break;
+            case Duration: object->m_duration = std::get<float>(value); break;
+            case Opacity: object->m_opacity = std::get<float>(value); break;
+            case TargetGroup: object->m_targetGroupID = std::get<int>(value); break;
+            case CenterGroup: object->m_centerGroupID = std::get<int>(value); break;
+            case Easing: object->m_easingType = std::get<EasingType>(value); break;
+            case Item: object->m_itemID = std::get<int>(value); break;
+        }
     };
 };

@@ -18,5 +18,10 @@
             "version": "v1.7.1",
             "importance": "required"
         }
-    ]
+    ],
+    "resources": {
+        "spritesheets": {
+            "OperatorSheet": ["resources/operators/*.png"]
+        }
+    }
 }

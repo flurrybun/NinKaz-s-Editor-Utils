@@ -11,39 +11,11 @@ using namespace geode::prelude;
 #include <algorithm>
 #include <iterator>
 
-// class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
-//     void onButton(CCObject* sender) {
-//         FLAlertLayer::create(
-//             "Button",
-//             "Button",
-//             "Button"
-//         )->show();
-//     }
-    
-//     bool init(EffectGameObject* p0, CCArray* p1) {
-//         if (!EditTriggersPopup::init(p0, p1)) return false;
-
-//         auto menuSpr = ButtonSprite::create("in menu");
-//         auto menuBtn = CCMenuItemSpriteExtra::create(menuSpr, this, menu_selector(MultiEditTriggersPopup::onButton));
-//         menuBtn->setPosition(-100, 0);
-
-//         auto notInMenuSpr = ButtonSprite::create("not in menu");
-//         auto notInMenuBtn = CCMenuItemSpriteExtra::create(notInMenuSpr, this, menu_selector(MultiEditTriggersPopup::onButton));
-//         notInMenuBtn->setPosition(100, 0);
-
-//         auto menu = AxisLayout::create();
-
-//         menu->addChild(menuBtn);
-//         m_buttonMenu->addChild(menu);
-//         m_buttonMenu->addChild(notInMenuBtn);
-
-//         return true;
-//     }
-// };
-
 class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
-    std::vector<Trigger> m_triggers;
-    short easingIndex = 0;
+    struct Fields {
+        std::vector<Trigger> m_triggers;
+        CCLabelBMFont* m_easingLabel;
+    };
 
     std::string floatToRoundedString(float value) {
         value = std::round(value * 100) / 100;
@@ -87,7 +59,7 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         auto labelText = type == GroupMenuType::TargetGroup ? "Target Group ID:" :
             type == GroupMenuType::CenterGroup ? "Center Group ID:" : "Item ID:";
         auto label = CCLabelBMFont::create(labelText, "goldFont.fnt");
-        label->setPosition(center + ccp(0, 17)); // prev. 0, 30
+        label->setPosition(center + ccp(0, 17));
         label->setScale(0.56);
 
         auto decArrowSpr = CCSprite::createWithSpriteFrameName("edit_leftBtn_001.png");
@@ -131,8 +103,8 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
 
     CCMenu* createSliderMenu(SliderMenuType type, std::optional<float> initialValue) {
         auto menu = CCMenu::create();
-        menu->setContentSize({ 134, 46 });
-        auto center = ccp(67, 23);
+        menu->setContentSize({ 146, 46 });
+        auto center = ccp(73, 23);
 
         auto slider = Slider::create(this, menu_selector(MultiEditTriggersPopup::onSliderChanged), 0.64);
         slider->setPosition(center + ccp(0, -15));
@@ -154,8 +126,7 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
 
             auto value = std::stof(text);
             if (type == SliderMenuType::Opacity) value = std::clamp(value, 0.0f, 1.0f);
-
-            slider->setValue(value / 10);
+            if (type == SliderMenuType::Duration) slider->setValue(value / 10);
 
             for (auto& trigger : m_fields->m_triggers) {
                 if (type == SliderMenuType::Duration && trigger.hasDuration) {
@@ -177,74 +148,86 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         menu->addChild(label);
 
         menu->setTouchPriority(-505);
+        menu->setScale(1.1);
 
         return menu;
     };
 
-    short getIndexOfEasingType(EasingType type) {
+    std::string easingTypeToString(EasingType type) {
         switch (type) {
-            case EasingType::None: return 0;
-            case EasingType::EaseInOut: return 1; case EasingType::EaseIn: return 2; case EasingType::EaseOut: return 3;
-            case EasingType::ElasticInOut: return 4; case EasingType::ElasticIn: return 5; case EasingType::ElasticOut: return 6;
-            case EasingType::BounceInOut: return 7; case EasingType::BounceIn: return 8; case EasingType::BounceOut: return 9;
-            case EasingType::ExponentialInOut: return 10; case EasingType::ExponentialIn: return 11; case EasingType::ExponentialOut: return 12;
-            case EasingType::SineInOut: return 13; case EasingType::SineIn: return 14; case EasingType::SineOut: return 15;
-            case EasingType::BackInOut: return 16; case EasingType::BackIn: return 17; case EasingType::BackOut: return 18;
+            case EasingType::None: return "None";
+            case EasingType::EaseInOut: return "Ease In Out"; case EasingType::EaseIn: return "Ease In"; case EasingType::EaseOut: return "Ease Out";
+            case EasingType::ElasticInOut: return "Elastic In Out"; case EasingType::ElasticIn: return "Elastic In"; case EasingType::ElasticOut: return "Elastic Out";
+            case EasingType::BounceInOut: return "Bounce In Out"; case EasingType::BounceIn: return "Bounce In"; case EasingType::BounceOut: return "Bounce Out";
+            case EasingType::ExponentialInOut: return "Exponential In Out"; case EasingType::ExponentialIn: return "Exponential In"; case EasingType::ExponentialOut: return "Exponential Out";
+            case EasingType::SineInOut: return "Sine In Out"; case EasingType::SineIn: return "Sine In"; case EasingType::SineOut: return "Sine Out";
+            case EasingType::BackInOut: return "Back In Out"; case EasingType::BackIn: return "Back In"; case EasingType::BackOut: return "Back Out";
         }
 
         return 0;
     }
-    
-    CCMenu* createEasingMenu(std::optional<EasingType> initialEasingType) {
-        auto menu = CCMenu::create();
-        menu->setContentSize({ 134, 46 });
-        auto center = ccp(67, 23);
 
-        // auto easeVector = std::vector<std::string> {
-        //     "None",
-        //     "Ease In Out", "Ease In", "Ease Out", "Ease Out In",
-        //     "Elastic In Out", "Elastic In", "Elastic Out",
-        //     "Bounce In Out", "Bounce In", "Bounce Out",
-        //     "Exponential In Out", "Exponential In", "Exponential Out",
-        //     "Sine In Out", "Sine In", "Sine Out",
-        //     "Back In Out", "Back In", "Back Out"
-        // };
-
-        auto easingMap = std::map<std::string, EasingType> {
-            { "None", EasingType::None },
-            { "Ease In Out", EasingType::EaseInOut }, { "Ease In", EasingType::EaseIn }, { "Ease Out", EasingType::EaseOut },
-            { "Elastic In Out", EasingType::ElasticInOut }, { "Elastic In", EasingType::ElasticIn }, { "Elastic Out", EasingType::ElasticOut },
-            { "Bounce In Out", EasingType::BounceInOut }, { "Bounce In", EasingType::BounceIn }, { "Bounce Out", EasingType::BounceOut },
-            { "Exponential In Out", EasingType::ExponentialInOut }, { "Exponential In", EasingType::ExponentialIn }, { "Exponential Out", EasingType::ExponentialOut },
-            { "Sine In Out", EasingType::SineInOut }, { "Sine In", EasingType::SineIn }, { "Sine Out", EasingType::SineOut },
-            { "Back In Out", EasingType::BackInOut }, { "Back In", EasingType::BackIn }, { "Back Out", EasingType::BackOut }
+    void onEasingChange(CCObject* sender) {
+        auto easingStrings = std::vector<std::string> {
+            "None",
+            "Ease In Out", "Ease In", "Ease Out",
+            "Elastic In Out", "Elastic In", "Elastic Out",
+            "Bounce In Out", "Bounce In", "Bounce Out",
+            "Exponential In Out", "Exponential In", "Exponential Out",
+            "Sine In Out", "Sine In", "Sine Out",
+            "Back In Out", "Back In", "Back Out"
         };
+
+        auto& label = m_fields->m_easingLabel;
+        auto labelString = label->getString();
+
+        auto index = find(easingStrings.begin(), easingStrings.end(), labelString) - easingStrings.begin();
+        if (index >= easingStrings.size()) index = 0;
+        
+        index += sender->getTag();
+        if (index < 0) index = 18;
+        if (index > 18) index = 0;
+
+        auto newString = easingStrings[index];
+        label->setString(newString.c_str());
+        label->limitLabelWidth(125, 0.56, 0.1);
+
+        for (auto& trigger : m_fields->m_triggers) {
+            trigger.object->m_easingType = static_cast<EasingType>(index);
+        }
+    }
+    
+    CCMenu* createEasingMenu(std::optional<EasingType> initialValue) {
+        auto menu = CCMenu::create();
+        menu->setContentSize({ 180, 40 });
+        auto center = ccp(90, 23);
 
         auto titleText = "Easing:";
         auto title = CCLabelBMFont::create(titleText, "goldFont.fnt");
-        title->setPosition(center + ccp(0, 24));
+        title->setPosition(center + ccp(0, 12));
         title->setScale(0.64);
 
-        auto labelText = "Bounce In"; //487.5, 106
-        auto label = CCLabelBMFont::create(labelText, "bigFont.fnt");
-        label->setPosition(center);
-        label->limitLabelWidth(330.25, 0.56, 0.1);
+        auto labelText = initialValue.has_value() ? easingTypeToString(*initialValue) : "Mixed";
+        auto label = CCLabelBMFont::create(labelText.c_str(), "bigFont.fnt");
+        label->setPosition(center + ccp(0, -12));
+        label->limitLabelWidth(125, 0.56, 0.1);
+        m_fields->m_easingLabel = label;
 
         auto decArrowSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");
         decArrowSpr->setScale(0.56);
         auto decArrowBtn = CCMenuItemSpriteExtra::create(
-            decArrowSpr, this, nullptr
+            decArrowSpr, this, menu_selector(MultiEditTriggersPopup::onEasingChange)
         );
-        decArrowBtn->setPosition(center + ccp(-80, 0));
+        decArrowBtn->setPosition(center + ccp(-80, -12));
         decArrowBtn->setTag(-1);
 
         auto incArrowSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");
         incArrowSpr->setScale(0.56);
         incArrowSpr->setFlipX(true);
         auto incArrowBtn = CCMenuItemSpriteExtra::create(
-            incArrowSpr, this, nullptr
+            incArrowSpr, this, menu_selector(MultiEditTriggersPopup::onEasingChange)
         );
-        incArrowBtn->setPosition(center + ccp(80, 0));
+        incArrowBtn->setPosition(center + ccp(80, -12));
         incArrowBtn->setTag(1);
 
         menu->addChild(title);
@@ -259,16 +242,11 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
 
     void onMixedInput(CCObject* sender) {
         auto& triggers = m_fields->m_triggers;
-        auto alert = MixedInputPopup::create(triggers, [triggers](std::variant<int, float> newValue) {
-            for (auto& trigger : triggers) {
-                trigger.object->m_targetGroupID = std::get<int>(newValue);
-            }
-        });
+
+        auto alert = MixedInputPopup::create(triggers, Trigger::PropType::TargetGroup);
 
         alert->m_noElasticity = true;
         alert->show();
-
-        // MixedInputPopup::create(triggers, Trigger::PropType::TargetGroup)->show();
     }
 
     void setMenuToMixed(CCMenu* menu) {
@@ -288,7 +266,7 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
 
             spr->addChild(label);
 
-            auto btn = CCMenuItemSpriteExtra::create(spr, menu, menu_selector(MultiEditTriggersPopup::onMixedInput));
+            auto btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(MultiEditTriggersPopup::onMixedInput));
             btn->setPosition(input->getPosition());
 
             menu->addChild(btn);
@@ -324,6 +302,7 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
         // GET TRIGGERS
+
         auto& triggers = m_fields->m_triggers;
         auto triggerGameObjects = static_cast<CCArrayExt<EffectGameObject*>>(p1);
 
@@ -338,20 +317,81 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         auto initialEasingType = getInitialTriggerValue<EasingType>(triggers, Trigger::PropType::Easing);
         auto initialItemID = getInitialTriggerValue<int>(triggers, Trigger::PropType::Item);
 
+        auto hasProperty = [triggers](auto predicate) {
+            return std::any_of(triggers.begin(), triggers.end(), predicate);
+        };
+
+        bool hasTargetGroup = hasProperty([](const Trigger& trigger){ return trigger.hasTargetGroup; });
+        bool hasCenterGroup = hasProperty([](const Trigger& trigger){ return trigger.hasCenterGroup; });
+        bool hasItem = hasProperty([](const Trigger& trigger){ return trigger.hasItem; });
+        bool hasEasing = hasProperty([](const Trigger& trigger){ return trigger.hasEasing; });
+        bool hasDuration = hasProperty([](const Trigger& trigger){ return trigger.hasDuration; });
+        bool hasOpacity = hasProperty([](const Trigger& trigger){ return trigger.hasOpacity; });
+        
+        // ADD MENUS
+
+        auto targetGroupMenu = createGroupMenu(GroupMenuType::TargetGroup, initialTargetGroupID);
+        auto centerGroupMenu = createGroupMenu(GroupMenuType::CenterGroup, initialCenterGroupID);
+        auto itemMenu = createGroupMenu(GroupMenuType::Item, initialItemID);
+        auto easingMenu = createEasingMenu(initialEasingType);
+        auto durationMenu = createSliderMenu(SliderMenuType::Duration, initialDuration);
+        auto opacityMenu = createSliderMenu(SliderMenuType::Opacity, initialOpacity);
+
+        auto layout = CCMenu::create();
+        layout->setLayout(
+            RowLayout::create()
+                ->setGap(20)
+                ->setGrowCrossAxis(true)
+                ->setAutoScale(false)
+        );
+
+        easingMenu->setLayoutOptions(
+            AxisLayoutOptions::create()
+                ->setNextGap(30.f)
+        );
+
+        if (hasTargetGroup) layout->addChild(targetGroupMenu);
+        if (hasCenterGroup) layout->addChild(centerGroupMenu);
+        if (hasItem) layout->addChild(itemMenu);
+        if (hasEasing) layout->addChild(easingMenu);
+        if (hasDuration) layout->addChild(durationMenu);
+        if (hasOpacity) layout->addChild(opacityMenu);
+
+        if (!initialTargetGroupID.has_value()) setMenuToMixed(targetGroupMenu);
+        if (!initialCenterGroupID.has_value()) setMenuToMixed(centerGroupMenu);
+        if (!initialItemID.has_value()) setMenuToMixed(itemMenu);
+        if (!initialEasingType.has_value()) setMenuToMixed(easingMenu);
+        if (!initialDuration.has_value()) setMenuToMixed(durationMenu);
+        if (!initialOpacity.has_value()) setMenuToMixed(opacityMenu);
+
+        auto numberChildren = layout->getChildrenCount();
+        CCSize newAlertSize;
+
+        if (numberChildren > 4) {
+            newAlertSize = CCSize(440, 310);
+        } else if (numberChildren > 2) {
+            newAlertSize = CCSize(420, 230);
+        } else {
+            newAlertSize = CCSize(390, 220); //TODO: change to a better value and make it align column not row
+        }
+
+        layout->setContentSize(newAlertSize - CCSize(10, 70));
+
+        layout->setPosition(winSize / 2 + ccp(0, 9));
+        layout->updateLayout();
+        this->addChild(layout);
+
         // INCREASE ALERT SIZE
 
         // old alert size: { 330, 120 }
-        // new alert size: { 440, 310 }
+
+        auto changeWidth = (newAlertSize.width - 330) / 2;
+        auto changeHeight = (newAlertSize.height - 120) / 2;
 
         auto bg = as<CCScale9Sprite*>(m_mainLayer->getChildren()->objectAtIndex(0));
         auto title = as<CCLabelBMFont*>(getChildren()->objectAtIndex(1));
         auto okBtn = as<CCMenuItemSpriteExtra*>(m_buttonMenu->getChildren()->objectAtIndex(0));
         auto infoBtn = as<InfoAlertButton*>(m_buttonMenu->getChildren()->objectAtIndex(1));
-        
-        bg->setContentSize({ 440, 310 });
-        title->setPositionY(title->getPositionY() + 95);
-        okBtn->setPositionY(okBtn->getPositionY() - 95);
-        infoBtn->setPosition(infoBtn->getPosition() + ccp(-55, 95));
 
         auto touchLabel = as<CCLabelBMFont*>(m_mainLayer->getChildren()->objectAtIndex(2));
         auto touchBtn = as<CCMenuItemSpriteExtra*>(m_buttonMenu->getChildren()->objectAtIndex(2));
@@ -360,73 +400,17 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         auto multiLabel = as<CCLabelBMFont*>(m_mainLayer->getChildren()->objectAtIndex(4));
         auto multiBtn = as<CCMenuItemSpriteExtra*>(m_buttonMenu->getChildren()->objectAtIndex(4));
 
-        touchLabel->setPosition(touchLabel->getPosition() + ccp(-55, -95 - 30));
-        touchBtn->setPosition(touchBtn->getPosition() + ccp(-55, -95 - 30));
-        spawnLabel->setPosition(spawnLabel->getPosition() + ccp(-55 + 90, -95));
-        spawnBtn->setPosition(spawnBtn->getPosition() + ccp(-55 + 90, -95));
-        multiLabel->setPosition(multiLabel->getPosition() + ccp(55, -95));
-        multiBtn->setPosition(multiBtn->getPosition() + ccp(55, -95));
+        bg->setContentSize(newAlertSize);
+        title->setPositionY(title->getPositionY() + changeHeight);
+        okBtn->setPositionY(okBtn->getPositionY() - changeHeight);
+        infoBtn->setPosition(infoBtn->getPosition() + ccp(-changeWidth, changeHeight));
 
-        auto infoText = "Edit attributes of the selected triggers.\n"
-            "<cy>Touch trigger</c> makes the triggers activate on player touch.\n"
-            "<cl>Spawn trigger</c> makes the triggers activate from a spawn trigger.\n"
-            "Prefix a number with + or - to change the values rather than setting them to a fixed value.";  
-
-        // ADD MENUS
-
-        auto groupRow = CCMenu::create();
-        groupRow->setLayout(
-            RowLayout::create()
-                ->setGap(20)
-                ->setGrowCrossAxis(true)
-        );
-
-        auto timeRow = CCMenu::create();
-        timeRow->setLayout(
-            RowLayout::create()
-                ->setGap(40)
-                ->setGrowCrossAxis(true)
-        );
-
-        auto hasProperty = [triggers](auto predicate) {
-            return std::any_of(triggers.begin(), triggers.end(), predicate);
-        };
-
-        bool hasTargetGroup = hasProperty([](const Trigger& trigger){ return trigger.hasTargetGroup; });
-        bool hasCenterGroup = hasProperty([](const Trigger& trigger){ return trigger.hasCenterGroup; });
-        bool hasItem = hasProperty([](const Trigger& trigger){ return trigger.hasItem; });
-        bool hasDuration = hasProperty([](const Trigger& trigger){ return trigger.hasDuration; });
-        bool hasOpacity = hasProperty([](const Trigger& trigger){ return trigger.hasOpacity; });
-        bool hasEasing = hasProperty([](const Trigger& trigger){ return trigger.hasEasing; });
-
-        auto targetGroupMenu = createGroupMenu(GroupMenuType::TargetGroup, initialTargetGroupID);
-        auto centerGroupMenu = createGroupMenu(GroupMenuType::CenterGroup, initialCenterGroupID);
-        auto itemMenu = createGroupMenu(GroupMenuType::Item, initialItemID);
-        auto durationMenu = createSliderMenu(SliderMenuType::Duration, initialDuration);
-        auto opacityMenu = createSliderMenu(SliderMenuType::Opacity, initialOpacity);
-        auto easingMenu = createEasingMenu(initialEasingType);
-
-        if (hasTargetGroup) groupRow->addChild(targetGroupMenu);
-        if (hasCenterGroup) groupRow->addChild(centerGroupMenu);
-        if (hasItem) groupRow->addChild(itemMenu);
-        if (hasDuration) timeRow->addChild(durationMenu);
-        if (hasOpacity) timeRow->addChild(opacityMenu);
-        if (hasEasing) groupRow->addChild(easingMenu);
-
-        if (!initialTargetGroupID.has_value()) setMenuToMixed(targetGroupMenu);
-        if (!initialCenterGroupID.has_value()) setMenuToMixed(centerGroupMenu);
-        if (!initialItemID.has_value()) setMenuToMixed(itemMenu);
-        if (!initialDuration.has_value()) setMenuToMixed(durationMenu);
-        if (!initialOpacity.has_value()) setMenuToMixed(opacityMenu);
-        if (!initialEasingType.has_value()) setMenuToMixed(easingMenu);
-
-        groupRow->setPosition(winSize / 2 + ccp(0, 80));
-        groupRow->updateLayout();
-        this->addChild(groupRow);
-
-        timeRow->setPosition(winSize / 2 + ccp(0, 20));
-        timeRow->updateLayout();
-        this->addChild(timeRow);
+        touchLabel->setPosition(touchLabel->getPosition() + ccp(-changeWidth, -changeHeight - 30));
+        touchBtn->setPosition(touchBtn->getPosition() + ccp(-changeWidth, -changeHeight - 30));
+        spawnLabel->setPosition(spawnLabel->getPosition() + ccp(-changeWidth + 90, -changeHeight));
+        spawnBtn->setPosition(spawnBtn->getPosition() + ccp(-changeWidth + 90, -changeHeight));
+        multiLabel->setPosition(multiLabel->getPosition() + ccp(changeWidth, -changeHeight));
+        multiBtn->setPosition(multiBtn->getPosition() + ccp(changeWidth, -changeHeight));
 
         return true;
     }

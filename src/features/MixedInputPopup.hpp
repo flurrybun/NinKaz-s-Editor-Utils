@@ -5,21 +5,25 @@
 
 using namespace geode::prelude;
 
-enum OperatorType {
+enum Operator {
     Add, Subtract, Multiply, Divide, Equal
 };
 
-class MixedInputPopup : public Popup<const std::vector<Trigger>&, std::function<void(std::variant<int, float>)>> {
+class MixedInputPopup : public Popup<const std::vector<Trigger>&, Trigger::PropType> {
 protected:
     std::vector<Trigger> m_triggers;
-    std::function<void(std::variant<int, float>)> m_setProperty;
-    OperatorType m_operator;
-    CCMenuItemSpriteExtra* m_operatorBtn;
+    Trigger::PropType m_type;
+    Operator m_operator;
+    CCMenuItemToggler* m_operatorBtn;
+    std::variant<int, float> m_value;
 
-    bool setup(const std::vector<Trigger>&, std::function<void(std::variant<int, float>)>) override;
+    bool setup(const std::vector<Trigger>&, Trigger::PropType) override;
 
-    CCMenuItemSpriteExtra* createOperatorButton(const OperatorType&);
+    CCSprite* createOperatorSprite(const Operator&);
+    CCMenuItemToggler* createOperatorButton(const Operator&);
+    CCScale9Sprite* createOperatorBase(bool);
     void onOperator(CCObject*);
+    void onApply(CCObject* sender);
 public:
-    static MixedInputPopup* create(const std::vector<Trigger>&, std::function<void(std::variant<int, float>)>);
+    static MixedInputPopup* create(const std::vector<Trigger>&, Trigger::PropType);
 };
