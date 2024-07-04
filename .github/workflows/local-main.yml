@@ -1,10 +1,6 @@
-name: Build Geode Mod
+name: Build Geode Mod (Local Bindings)
 
-on:
-    workflow_dispatch:
-    push:
-        branches:
-            - "**"
+on: workflow_dispatch
 
 jobs:
     build:
@@ -35,7 +31,7 @@ jobs:
             - name: Build the mod
               uses: geode-sdk/build-geode-mod@main
               with:
-                  bindings: geode-sdk/bindings
+                  bindings: flurrybun/geode-bindings
                   bindings-ref: main
                   combine: true
                   target: ${{ matrix.config.target }}
