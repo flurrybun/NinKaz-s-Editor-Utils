@@ -33,6 +33,19 @@ struct Trigger {
         };
         return instance;
     }
+
+    static std::string getEasingString(EasingType easing) {
+        switch (easing) {
+            case EasingType::None: return "None";
+            case EasingType::EaseInOut: return "Ease In Out"; case EasingType::EaseIn: return "Ease In"; case EasingType::EaseOut: return "Ease Out";
+            case EasingType::ElasticInOut: return "Elastic In Out"; case EasingType::ElasticIn: return "Elastic In"; case EasingType::ElasticOut: return "Elastic Out";
+            case EasingType::BounceInOut: return "Bounce In Out"; case EasingType::BounceIn: return "Bounce In"; case EasingType::BounceOut: return "Bounce Out";
+            case EasingType::ExponentialInOut: return "Exponential In Out"; case EasingType::ExponentialIn: return "Exponential In"; case EasingType::ExponentialOut: return "Exponential Out";
+            case EasingType::SineInOut: return "Sine In Out"; case EasingType::SineIn: return "Sine In"; case EasingType::SineOut: return "Sine Out";
+            case EasingType::BackInOut: return "Back In Out"; case EasingType::BackIn: return "Back In"; case EasingType::BackOut: return "Back Out";
+        }
+        return "";
+    }
     
     EffectGameObject* object;
     bool hasColor;
@@ -92,6 +105,13 @@ struct Trigger {
         return std::monostate();
     };
 
+    std::string getPropertyString(PropType type) const {
+        auto prop = getProperty(type);
+        if (std::holds_alternative<int>(prop)) return std::to_string(std::get<int>(prop));
+        if (std::holds_alternative<float>(prop)) return std::to_string(std::get<float>(prop));
+        if (std::holds_alternative<EasingType>(prop)) return Trigger::getEasingString(std::get<EasingType>(prop));
+    }
+
     void setProperty(PropType type, std::variant<int, float, EasingType> value) {
         switch (type) {
             case Color: object->m_targetColor = std::get<int>(value); break;
@@ -102,5 +122,10 @@ struct Trigger {
             case Easing: object->m_easingType = std::get<EasingType>(value); break;
             case Item: object->m_itemID = std::get<int>(value); break;
         }
+    };
+
+    template<typename T>
+    T getProperty(PropType type) const {
+        return std::get<T>(getProperty(type));
     };
 };

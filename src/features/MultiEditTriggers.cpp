@@ -83,7 +83,7 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         menu->addChild(decArrowBtn);
         menu->addChild(incArrowBtn);
 
-        menu->setTouchPriority(-505);
+        menu->setTouchPriority(-504);
 
         return menu;
     };
@@ -147,25 +147,11 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         menu->addChild(slider);
         menu->addChild(label);
 
-        menu->setTouchPriority(-505);
+        menu->setTouchPriority(-504);
         menu->setScale(1.1);
 
         return menu;
     };
-
-    std::string easingTypeToString(EasingType type) {
-        switch (type) {
-            case EasingType::None: return "None";
-            case EasingType::EaseInOut: return "Ease In Out"; case EasingType::EaseIn: return "Ease In"; case EasingType::EaseOut: return "Ease Out";
-            case EasingType::ElasticInOut: return "Elastic In Out"; case EasingType::ElasticIn: return "Elastic In"; case EasingType::ElasticOut: return "Elastic Out";
-            case EasingType::BounceInOut: return "Bounce In Out"; case EasingType::BounceIn: return "Bounce In"; case EasingType::BounceOut: return "Bounce Out";
-            case EasingType::ExponentialInOut: return "Exponential In Out"; case EasingType::ExponentialIn: return "Exponential In"; case EasingType::ExponentialOut: return "Exponential Out";
-            case EasingType::SineInOut: return "Sine In Out"; case EasingType::SineIn: return "Sine In"; case EasingType::SineOut: return "Sine Out";
-            case EasingType::BackInOut: return "Back In Out"; case EasingType::BackIn: return "Back In"; case EasingType::BackOut: return "Back Out";
-        }
-
-        return 0;
-    }
 
     void onEasingChange(CCObject* sender) {
         auto easingStrings = std::vector<std::string> {
@@ -207,7 +193,7 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         title->setPosition(center + ccp(0, 12));
         title->setScale(0.64);
 
-        auto labelText = initialValue.has_value() ? easingTypeToString(*initialValue) : "Mixed";
+        auto labelText = initialValue.has_value() ? Trigger::getEasingString(*initialValue) : "Mixed";
         auto label = CCLabelBMFont::create(labelText.c_str(), "bigFont.fnt");
         label->setPosition(center + ccp(0, -12));
         label->limitLabelWidth(125, 0.56, 0.1);
@@ -235,21 +221,12 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         menu->addChild(decArrowBtn);
         menu->addChild(incArrowBtn);
 
-        menu->setTouchPriority(-505);
+        menu->setTouchPriority(-504);
 
         return menu;
     };
 
-    void onMixedInput(CCObject* sender) {
-        auto& triggers = m_fields->m_triggers;
-
-        auto alert = MixedInputPopup::create(triggers, Trigger::PropType::TargetGroup);
-
-        alert->m_noElasticity = true;
-        alert->show();
-    }
-
-    void setMenuToMixed(CCMenu* menu) {
+    void setMenuToMixed(CCMenu* menu, Trigger::PropType type) {
         auto input = getChildOfType<TextInput>(menu, 0);
         if (input) {
             input->setEnabled(false);
@@ -268,12 +245,23 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
 
             auto btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(MultiEditTriggersPopup::onMixedInput));
             btn->setPosition(input->getPosition());
+            btn->setTag(static_cast<int>(type));
 
             menu->addChild(btn);
         };
 
         auto slider = getChildOfType<Slider>(menu, 1);
         if (slider) slider->setValue(100);
+    }
+
+    void onMixedInput(CCObject* sender) {
+        auto& triggers = m_fields->m_triggers;
+        auto type = static_cast<Trigger::PropType>(sender->getTag());
+
+        auto alert = MixedInputPopup::create(triggers, type);
+
+        alert->m_noElasticity = true;
+        alert->show();
     }
 
     template<typename T>
@@ -357,12 +345,12 @@ class $modify(MultiEditTriggersPopup, EditTriggersPopup) {
         if (hasDuration) layout->addChild(durationMenu);
         if (hasOpacity) layout->addChild(opacityMenu);
 
-        if (!initialTargetGroupID.has_value()) setMenuToMixed(targetGroupMenu);
-        if (!initialCenterGroupID.has_value()) setMenuToMixed(centerGroupMenu);
-        if (!initialItemID.has_value()) setMenuToMixed(itemMenu);
-        if (!initialEasingType.has_value()) setMenuToMixed(easingMenu);
-        if (!initialDuration.has_value()) setMenuToMixed(durationMenu);
-        if (!initialOpacity.has_value()) setMenuToMixed(opacityMenu);
+        if (!initialTargetGroupID.has_value()) setMenuToMixed(targetGroupMenu, Trigger::PropType::TargetGroup);
+        if (!initialCenterGroupID.has_value()) setMenuToMixed(centerGroupMenu, Trigger::PropType::CenterGroup);
+        if (!initialItemID.has_value()) setMenuToMixed(itemMenu, Trigger::PropType::Item);
+        if (!initialEasingType.has_value()) setMenuToMixed(easingMenu, Trigger::PropType::Easing);
+        if (!initialDuration.has_value()) setMenuToMixed(durationMenu, Trigger::PropType::Duration);
+        if (!initialOpacity.has_value()) setMenuToMixed(opacityMenu, Trigger::PropType::Opacity);
 
         auto numberChildren = layout->getChildrenCount();
         CCSize newAlertSize;
